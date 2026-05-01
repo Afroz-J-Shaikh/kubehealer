@@ -158,7 +158,7 @@ class ConversationWorkflow:
 
         if "list pods" in text_lower or "show pods" in text_lower:
             return await workflow.execute_activity(
-                list_pods_activity, (namespace,),
+                list_pods_activity, namespace,
                 start_to_close_timeout=timedelta(seconds=30),
             )
 
@@ -213,6 +213,11 @@ class ConversationWorkflow:
                 issue.name, issue.namespace,
                 start_to_close_timeout=timedelta(seconds=30),
             )
+            # Normalize to string if needed
+            if isinstance(details, list):
+                details = "\n".join(map(str, details))
+            elif not isinstance(details, str):
+                details = str(details)
 
             diagnosis: Diagnosis = await workflow.execute_activity(
                 diagnose_pod, 
