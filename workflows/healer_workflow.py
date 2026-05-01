@@ -1,5 +1,5 @@
 from datetime import timedelta
-from typing import List, Dict
+from typing import List, Any, Dict
 
 from temporalio import workflow
 from temporalio.common import RetryPolicy
