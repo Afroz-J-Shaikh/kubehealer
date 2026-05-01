@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
+from typing import List, Dict, Any
 
-
+# Keep all existing models unchanged - Ollama compatible
 @dataclass
 class PodIssue:
     name: str
@@ -8,7 +9,6 @@ class PodIssue:
     status: str
     reason: str
     message: str
-
 
 @dataclass
 class Diagnosis:
@@ -20,7 +20,6 @@ class Diagnosis:
     fix_details: dict = field(default_factory=dict)
     namespace: str = "default"
 
-
 @dataclass
 class HealResult:
     pod_name: str
@@ -28,12 +27,10 @@ class HealResult:
     action_taken: str
     details: str
 
-
 @dataclass
 class HealerInput:
     namespace: str = "default"
     auto_approve: bool = True
-
 
 @dataclass
 class ConversationInput:
@@ -44,15 +41,14 @@ class ConversationInput:
     healing_decisions: dict = field(default_factory=dict)
     turn_count: int = 0
 
-
+# Updated for Ollama - renamed for clarity, backward compatible
 @dataclass
-class ClaudeRequest:
-    messages: list
-    tools: list
+class OllamaRequest:
+    messages: List[Dict[str, str]]
     system_prompt: str
-
+    model: str = "gemma2"
 
 @dataclass
-class ClaudeResponse:
-    stop_reason: str
-    content: list
+class OllamaResponse:
+    stop_reason: str = "end_turn"  # Ollama default
+    content: List[Dict[str, Any]]
