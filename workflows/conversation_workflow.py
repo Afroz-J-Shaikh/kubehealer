@@ -51,24 +51,24 @@ class ConversationWorkflow:
         self._healing_pending: List[str] = []
 
     @workflow.update
-async def send_message(self, text: str) -> str:
-    if text.strip().lower() in ("exit", "quit", "bye"):
-        self._done = True
-        return "Goodbye!"
-
-    self._messages.append({"role": "user", "content": text})
-    self._turn_count += 1
-
-    # COMMAND ROUTER FIRST
-    cmd_result = await self._handle_user_command(text)
-    if cmd_result:
-        self._messages.append({"role": "assistant", "content": cmd_result})
-        self._latest_response = cmd_result
-        return cmd_result
-
-    # FALLBACK to chat
-    await self._simple_ollama_chat(self._namespace)
-    return self._latest_response
+    async def send_message(self, text: str) -> str:
+        if text.strip().lower() in ("exit", "quit", "bye"):
+            self._done = True
+            return "Goodbye!"
+    
+        self._messages.append({"role": "user", "content": text})
+        self._turn_count += 1
+    
+        # COMMAND ROUTER FIRST
+        cmd_result = await self._handle_user_command(text)
+        if cmd_result:
+            self._messages.append({"role": "assistant", "content": cmd_result})
+            self._latest_response = cmd_result
+            return cmd_result
+    
+        # FALLBACK to chat
+        await self._simple_ollama_chat(self._namespace)
+        return self._latest_response
 
     @send_message.validator
     def validate_send_message(self, text: str) -> None:
