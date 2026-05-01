@@ -209,7 +209,8 @@ class ConversationWorkflow:
 
         for issue in issues:
             details = await workflow.execute_activity(
-                get_pod_details, [issue.name, issue.namespace],
+                get_pod_details, 
+                issue.name, issue.namespace,  # Positional args!
                 start_to_close_timeout=timedelta(seconds=30),
             )
 
