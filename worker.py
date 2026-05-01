@@ -13,13 +13,13 @@ def preflight_checks():
 
     # REMOVED Anthropic API key check - Ollama is local
     # Check Ollama running
-    try:
-        import ollama
-        response = ollama.list()  # Quick check if Ollama responds
-        if 'gemma2' not in [m['name'] for m in response.get('models', [])]:
-            errors.append("Ollama Gemma2 model not found. Run: ollama pull gemma2")
-    except Exception as e:
-        errors.append(f"Ollama not running/accessible: {e}\nRun 'ollama serve &' first.")
+    #try:
+     #   import ollama
+     #   response = ollama.list()  # Quick check if Ollama responds
+     #   if 'gemma2' not in [m['name'] for m in response.get('models', [])]:
+     #       errors.append("Ollama Gemma2 model not found. Run: ollama pull gemma2")
+    #except Exception as e:
+     #   errors.append(f"Ollama not running/accessible: {e}\nRun 'ollama serve &' first.")
 
     # Check Kubernetes connectivity
     try:
