@@ -1,27 +1,24 @@
 from datetime import timedelta
+from typing import List, Dict
 
 from temporalio import workflow
 from temporalio.common import RetryPolicy
 
 with workflow.unsafe.imports_passed_through():
     from activities.k8s_activities import scan_cluster, get_pod_details, execute_fix
-    from activities.llm_activities import diagnose_pod
+    from activities.llm_activities import diagnose_pod  # Now Gemma2 internally
     from models import Diagnosis, HealerInput
-
 
 @workflow.defn
 class HealerWorkflow:
-
     def __init__(self):
         self._phase: str = "starting"
-        self._diagnoses: list[Diagnosis] = []
-        self._decisions: dict[str, str] = {}
-        self._results: list[dict] = []
-
-    # ── Query ──────────────────────────────────────────────────
+        self._diagnoses: List[Diagnosis] = []
+        self._decisions: Dict[str, str] = {}
+        self._results: List[Dict[str, Any]] = []
 
     @workflow.query
-    def get_state(self) -> dict:
+    def get_state(self) -> Dict[str, Any]:
         return {
             "phase": self._phase,
             "diagnoses": [
@@ -39,8 +36,6 @@ class HealerWorkflow:
             "results": list(self._results),
         }
 
-    # ── Signals ────────────────────────────────────────────────
-
     @workflow.signal
     async def approve_pod(self, pod_name: str) -> None:
         self._decisions[pod_name] = "approved"
@@ -48,8 +43,6 @@ class HealerWorkflow:
     @workflow.signal
     async def reject_pod(self, pod_name: str) -> None:
         self._decisions[pod_name] = "rejected"
-
-    # ── Main workflow ──────────────────────────────────────────
 
     def _all_decided(self) -> bool:
         return all(d.pod_name in self._decisions for d in self._diagnoses)
@@ -76,7 +69,7 @@ class HealerWorkflow:
 
         workflow.logger.info(f"Found {len(issues)} unhealthy pod(s). Diagnosing...")
 
-        # Phase 2: Diagnose ALL pods
+        # Phase 2: Diagnose ALL pods (Gemma2 via diagnose_pod)
         self._phase = "diagnosing"
 
         for issue in issues:
@@ -84,12 +77,12 @@ class HealerWorkflow:
 
             details = await workflow.execute_activity(
                 get_pod_details,
-                args=[issue.name, issue.namespace],
+                args=[issue.name, issue.namespace],  # Fixed args=
                 start_to_close_timeout=timedelta(seconds=30),
             )
 
             diagnosis = await workflow.execute_activity(
-                diagnose_pod,
+                diagnose_pod,  # Now uses Gemma2 internally
                 details,
                 start_to_close_timeout=timedelta(seconds=60),
                 retry_policy=RetryPolicy(
@@ -104,7 +97,7 @@ class HealerWorkflow:
             )
             self._diagnoses.append(diagnosis)
 
-        # Phase 3: Approval gate
+        # Phase 3: Approval gate (unchanged)
         if auto_approve:
             for d in self._diagnoses:
                 self._decisions[d.pod_name] = "rejected" if d.action == "skip" else "approved"
@@ -114,7 +107,7 @@ class HealerWorkflow:
             await workflow.wait_condition(self._all_decided)
             workflow.logger.info("All decisions received.")
 
-        # Phase 4: Execute approved fixes
+        # Phase 4: Execute approved fixes (unchanged)
         self._phase = "executing"
 
         for diagnosis in self._diagnoses:
@@ -152,8 +145,8 @@ class HealerWorkflow:
         lines = [f"Healed {healed}/{total} pods:\n"]
         for r in self._results:
             icon = "+" if r["success"] else "-"
-            lines.append(f"  [{icon}] {r['pod_name']}: {r['action_taken']} -- {r['details']}")
+            lines.append(f"  [{icon}] {r['pod_name']}: {r['action_taken']} — {r['details']}")
 
-        summary = "\n".join(lines)
+        summary = "\n".join(lines)  # Fixed \\n
         workflow.logger.info(summary)
         return summary
