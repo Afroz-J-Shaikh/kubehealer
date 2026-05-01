@@ -143,7 +143,7 @@ class ConversationWorkflow:
         request = OllamaRequest(
             messages=recent_messages,
             system_prompt=SIMPLE_SYSTEM_PROMPT + "\n" + context,
-            model="gemma2"
+            model="gemma2:9b"
         )
 
         response: OllamaResponse = await workflow.execute_activity(
