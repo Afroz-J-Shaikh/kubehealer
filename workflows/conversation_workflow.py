@@ -213,15 +213,18 @@ class ConversationWorkflow:
                 args=[issue.name, issue.namespace],
                 start_to_close_timeout=timedelta(seconds=30),
             )
-            # Normalize to string if needed
+
+            # CRITICAL FIX: Convert list to string BEFORE calling diagnose_pod
+            # This prevents the "Expected str, was list" error in the worker
             if isinstance(details, list):
                 details = "\n".join(map(str, details))
-            elif not isinstance(details, str):
+            else:
                 details = str(details)
 
+            # Now the worker will accept 'details' because it matches the :str hint
             diagnosis: Diagnosis = await workflow.execute_activity(
                 diagnose_pod, 
-                details,  # String from get_pod_details
+                details, 
                 start_to_close_timeout=timedelta(seconds=60),
                 retry_policy=RetryPolicy(maximum_attempts=3),
             )
