@@ -159,7 +159,7 @@ class ConversationWorkflow:
         if "list pods" in text_lower or "show pods" in text_lower:
             return await workflow.execute_activity(
                 list_pods_activity, namespace,
-                start_to_close_activity=timedelta(seconds=30),
+                start_to_close_timeout=timedelta(seconds=30),
             )
 
         elif "scan" in text_lower or "heal" in text_lower:
