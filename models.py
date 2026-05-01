@@ -50,5 +50,5 @@ class OllamaRequest:
 
 @dataclass
 class OllamaResponse:
-    stop_reason: str = "end_turn"  # Ollama default
-    content: List[Dict[str, Any]]
+    content: list  # Non-default FIRST
+    stop_reason: str = "end_turn"  # Default LAST
