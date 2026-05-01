@@ -37,7 +37,7 @@ async def call_ollama(request: OllamaRequest) -> OllamaResponse:
         full_messages = [{"role": "system", "content": request.system_prompt}] + ollama_messages
 
         response = ollama.chat(
-            model=request.model,
+            model="gemma2:9b",
             messages=full_messages,
             options={
                 "temperature": 0.1,  # Low for Kube accuracy
