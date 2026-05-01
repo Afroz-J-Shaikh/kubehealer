@@ -1,6 +1,6 @@
 import asyncio
 import sys
-
+import time
 from dotenv import load_dotenv
 from temporalio.client import Client
 from temporalio.service import RPCError
