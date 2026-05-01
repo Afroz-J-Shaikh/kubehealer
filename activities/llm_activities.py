@@ -1,7 +1,6 @@
 import json
 import re
-
-import anthropic
+import ollama  # Replaced anthropic
 from temporalio import activity
 from temporalio.exceptions import ApplicationError
 
@@ -32,53 +31,43 @@ Common patterns:
 
 VALID_ACTIONS = {"restart_pod", "fix_image", "patch_resources", "skip"}
 
-
 def _parse_json_response(text: str) -> dict:
-    """Parse JSON from Claude's response, stripping markdown fences if present."""
+    """Parse JSON from response, stripping markdown fences if present."""
     # Strip opening fences (```json, ```JSON, ```) and closing fences (```)
     cleaned = re.sub(r"```(?:json|JSON)?\s*", "", text)
     cleaned = re.sub(r"```\s*$", "", cleaned, flags=re.MULTILINE)
     cleaned = cleaned.strip()
     return json.loads(cleaned)
 
-
 @activity.defn
 async def diagnose_pod(pod_details: str) -> Diagnosis:
-    activity.logger.info("Asking Claude to diagnose pod")
-
-    ai = anthropic.Anthropic()
+    activity.logger.info("Asking Gemma2 to diagnose pod")
 
     try:
-        response = ai.messages.create(
-            model="claude-sonnet-4-20250514",
-            max_tokens=1024,
-            system=SYSTEM_PROMPT,
-            messages=[{"role": "user", "content": pod_details}],
+        response = ollama.chat(
+            model='gemma2',
+            messages=[
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": pod_details}
+            ],
+            options={
+                "temperature": 0.1,  # Deterministic for JSON
+                "num_predict": 1024
+            }
         )
-    except anthropic.AuthenticationError as e:
-        raise ApplicationError(
-            f"Anthropic auth failed: {e}",
-            non_retryable=True,
-        )
-    except anthropic.RateLimitError as e:
-        raise ApplicationError(f"Anthropic rate limit: {e}")
-    except anthropic.APIStatusError as e:
-        if e.status_code >= 500:
-            raise ApplicationError(f"Anthropic server error: {e}")
-        raise ApplicationError(
-            f"Anthropic API error: {e}",
-            non_retryable=True,
-        )
+        
+        raw_text = response['message']['content']
+        
+    except Exception as e:
+        raise ApplicationError(f"Ollama Gemma2 failed: {str(e)}")
 
-    if not response.content:
-        raise ApplicationError("Claude returned empty response for diagnosis")
-
-    raw_text = response.content[0].text
+    if not raw_text:
+        raise ApplicationError("Gemma2 returned empty response for diagnosis")
 
     try:
         data = _parse_json_response(raw_text)
     except (json.JSONDecodeError, ValueError) as e:
-        raise ApplicationError(f"Failed to parse Claude diagnosis JSON: {e}")
+        raise ApplicationError(f"Failed to parse Gemma2 diagnosis JSON: {e}")
 
     # Validate action is in known set
     action = data.get("action", "skip")
