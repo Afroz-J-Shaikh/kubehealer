@@ -45,7 +45,7 @@ async def diagnose_pod(pod_details: str) -> Diagnosis:
 
     try:
         response = ollama.chat(
-            model='gemma2:9b',
+            model='gemma4',
             messages=[
                 {"role": "system", "content": SYSTEM_PROMPT},
                 {"role": "user", "content": pod_details}
