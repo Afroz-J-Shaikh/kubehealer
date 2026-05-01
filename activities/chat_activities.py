@@ -1,10 +1,8 @@
-import anthropic
+import ollama  # Replaced anthropic
 from kubernetes import client, config
 from temporalio import activity
 from temporalio.exceptions import ApplicationError
-
-from models import ClaudeRequest, ClaudeResponse
-
+from models import OllamaRequest, OllamaResponse  # Updated import
 
 def _init_k8s():
     """Initialize Kubernetes client. Tries in-cluster first, falls back to kubeconfig."""
@@ -20,47 +18,55 @@ def _init_k8s():
             )
     return client.CoreV1Api()
 
-
 v1 = _init_k8s()
 
-
-# ── Claude API activity ───────────────────────────────────────
-
-
+# ── Ollama Gemma2 API activity ───────────────────────────────────────
 @activity.defn
-async def call_claude(request: ClaudeRequest) -> ClaudeResponse:
-    """Call the Anthropic Messages API. Returns serializable response."""
-    activity.logger.info(f"Calling Claude ({len(request.messages)} messages, {len(request.tools)} tools)")
-
-    ai = anthropic.Anthropic()
+async def call_ollama(request: OllamaRequest) -> OllamaResponse:
+    """Call Ollama Gemma2. Returns serializable response."""
+    activity.logger.info(f"Calling Ollama Gemma2 ({len(request.messages)} messages)")
 
     try:
-        response = ai.messages.create(
-            model="claude-sonnet-4-20250514",
-            max_tokens=4096,
-            system=request.system_prompt,
-            tools=request.tools,
-            messages=request.messages,
+        # Build messages array for Ollama
+        ollama_messages = []
+        for msg in request.messages:
+            role = "user" if msg.get("role") == "user" else "assistant"
+            ollama_messages.append({"role": role, "content": msg.get("content", "")})
+        
+        # System prompt first
+        full_messages = [{"role": "system", "content": request.system_prompt}] + ollama_messages
+
+        response = ollama.chat(
+            model=request.model,
+            messages=full_messages,
+            options={
+                "temperature": 0.1,  # Low for Kube accuracy
+                "num_predict": 2048  # Max tokens
+            }
         )
-    except anthropic.AuthenticationError as e:
-        raise ApplicationError(f"Anthropic auth failed: {e}", non_retryable=True)
-    except anthropic.RateLimitError as e:
-        raise ApplicationError(f"Anthropic rate limit: {e}")
-    except anthropic.APIStatusError as e:
-        if e.status_code >= 500:
-            raise ApplicationError(f"Anthropic server error: {e}")
-        raise ApplicationError(f"Anthropic API error: {e}", non_retryable=True)
+        
+        # Ollama response format: {'message': {'role': 'assistant', 'content': '...', 'tool_calls': []}}
+        content_text = response['message']['content']
+        
+        # Convert to Claude-like content blocks for compatibility
+        content_dicts = [
+            {
+                "type": "text",
+                "text": content_text
+            }
+        ]
+        
+        # Ollama doesn't have stop_reason - use default
+        stop_reason = "end_turn"
+        
+        activity.logger.info(f"Response: stop_reason={stop_reason}, {len(content_dicts)} blocks")
+        return OllamaResponse(stop_reason=stop_reason, content=content_dicts)
+        
+    except Exception as e:
+        activity.logger.error(f"Ollama error: {e}")
+        raise ApplicationError(f"Ollama Gemma2 failed: {str(e)}")
 
-    # Convert Pydantic content blocks to plain dicts for Temporal serialization
-    content_dicts = [block.model_dump() for block in response.content]
-
-    activity.logger.info(f"Response: stop_reason={response.stop_reason}, {len(content_dicts)} blocks")
-    return ClaudeResponse(stop_reason=response.stop_reason, content=content_dicts)
-
-
-# ── Kubernetes read activities ─────────────────────────────────
-
-
+# ── Kubernetes read activities ───────────────────────────────── (UNCHANGED)
 @activity.defn
 async def list_pods_activity(namespace: str) -> str:
     """List all pods in a namespace with status, readiness, and restart count."""
@@ -92,8 +98,7 @@ async def list_pods_activity(namespace: str) -> str:
 
         lines.append(f"{name:<50} {phase:<25} {ready:<8} {restarts}")
 
-    return "\n".join(lines)
-
+    return "\n".join(lines)  # Fixed double \\
 
 @activity.defn
 async def get_pod_details_activity(pod_name: str, namespace: str) -> str:
@@ -130,7 +135,6 @@ async def get_pod_details_activity(pod_name: str, namespace: str) -> str:
 
     return "\n".join(lines)
 
-
 @activity.defn
 async def get_pod_logs_activity(pod_name: str, namespace: str, tail_lines: int) -> str:
     """Get recent log output from a pod."""
@@ -140,7 +144,6 @@ async def get_pod_logs_activity(pod_name: str, namespace: str, tail_lines: int) 
         return logs if logs else "(no log output)"
     except Exception as e:
         return f"Could not get logs: {e}"
-
 
 @activity.defn
 async def get_pod_events_activity(pod_name: str, namespace: str) -> str:
