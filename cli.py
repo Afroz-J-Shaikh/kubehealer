@@ -10,7 +10,7 @@ load_dotenv()
 from models import ConversationInput
 from workflows.conversation_workflow import ConversationWorkflow
 
-WORKFLOW_ID = "kubehealer-conversation"
+WORKFLOW_ID = f"kubehealer-conversation-{int(time.time())}"
 
 BANNER = """
 \033[1;96m  ╔═══════════════════════════════════════╗
