@@ -46,7 +46,7 @@ class ConversationInput:
 class OllamaRequest:
     messages: List[Dict[str, str]]
     system_prompt: str
-    model: str = "gemma2:9b"
+    model: str = "gemma4"
 
 @dataclass
 class OllamaResponse:
