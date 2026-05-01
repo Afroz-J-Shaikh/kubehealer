@@ -158,7 +158,7 @@ class ConversationWorkflow:
 
         if "list pods" in text_lower or "show pods" in text_lower:
             return await workflow.execute_activity(
-                list_pods_activity, namespace,
+                list_pods_activity, (namespace,),
                 start_to_close_timeout=timedelta(seconds=30),
             )
 
@@ -210,13 +210,13 @@ class ConversationWorkflow:
         for issue in issues:
             details = await workflow.execute_activity(
                 get_pod_details_activity,
-                issue.name, issue.namespace,  # Positional args!
+                (issue.name, issue.namespace), # Positional args!
                 start_to_close_timeout=timedelta(seconds=30),
             )
 
             diagnosis: Diagnosis = await workflow.execute_activity(
                 diagnose_pod, 
-                details,  # String from get_pod_details
+                (details,),  # String from get_pod_details
                 start_to_close_timeout=timedelta(seconds=60),
                 retry_policy=RetryPolicy(maximum_attempts=3),
             )
