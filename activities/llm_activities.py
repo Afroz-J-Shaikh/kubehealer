@@ -3,7 +3,7 @@ import re
 import ollama  # Replaced anthropic
 from temporalio import activity
 from temporalio.exceptions import ApplicationError
-
+from typing import Any
 from models import Diagnosis
 
 SYSTEM_PROMPT = """You are a Kubernetes SRE expert. You receive pod diagnostic info and must identify the root cause and suggest a fix.
@@ -40,7 +40,7 @@ def _parse_json_response(text: str) -> dict:
     return json.loads(cleaned)
 
 @activity.defn
-async def diagnose_pod(pod_details: str) -> Diagnosis:
+async def diagnose_pod(pod_details: Any) -> Diagnosis:
     activity.logger.info("Asking Gemma2 to diagnose pod")
 
     try:
