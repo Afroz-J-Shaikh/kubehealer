@@ -215,7 +215,8 @@ class ConversationWorkflow:
             )
 
             diagnosis: Diagnosis = await workflow.execute_activity(
-                diagnose_pod, details,
+                diagnose_pod, 
+                details,  # String from get_pod_details
                 start_to_close_timeout=timedelta(seconds=60),
                 retry_policy=RetryPolicy(maximum_attempts=3),
             )
