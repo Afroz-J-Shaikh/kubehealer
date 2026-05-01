@@ -1,5 +1,5 @@
 from datetime import timedelta
-from typing import List, Dict, Any
+from typing import List, Dict
 
 from temporalio import workflow
 from temporalio.common import RetryPolicy
@@ -210,7 +210,7 @@ class ConversationWorkflow:
         for issue in issues:
             details = await workflow.execute_activity(
                 get_pod_details_activity,
-                issue.name, issue.namespace,
+                args=[issue.name, issue.namespace],
                 start_to_close_timeout=timedelta(seconds=30),
             )
             # Normalize to string if needed
